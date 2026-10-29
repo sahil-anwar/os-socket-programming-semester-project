@@ -1,0 +1,618 @@
+\documentclass{article}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{float} % For [H] to work
+
+\title{OS\ Project}
+\author{22P9326 Mashaal Ishtiaq}
+
+
+% Define custom colors for code
+\definecolor{codebackground}{rgb}{0.95, 0.95, 0.95}
+\definecolor{keywords}{rgb}{0.0, 0.0, 1.0}
+\definecolor{comments}{rgb}{0.0, 0.5, 0.0}
+
+\lstset{
+  backgroundcolor=\color{codebackground},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{keywords},
+  commentstyle=\color{comments},
+  frame=single,
+  breaklines=true,
+  columns=flexible,
+  keepspaces=true
+}
+
+\begin{document}
+
+\maketitle
+
+\section*{Task 1: CPU Scheduling Implementation}
+
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <queue>
+#include <algorithm>
+#include <sstream> // Include this for istringstream
+
+using namespace std;
+
+// Structure to store task information
+struct Task
+{
+    string name;
+    int priority;
+    int burstTime;
+};
+
+// Function to read tasks from the file
+vector<Task> readTasks(const string &filename)
+{
+    vector<Task> tasks;
+    ifstream file(filename);
+    if (!file.is_open())
+    {
+        cerr << "Failed to open file: " << filename << endl;
+        return tasks;
+    }
+
+    string line;
+    while (getline(file, line))
+    {
+        size_t pos1 = line.find(',');
+        size_t pos2 = line.find(',', pos1 + 1);
+
+        string name;
+        int priority, burstTime;
+
+        if (pos1 != string::npos && pos2 != string::npos)
+        {
+            // For comma-separated values
+            name = line.substr(0, pos1);
+            priority = stoi(line.substr(pos1 + 1, pos2 - pos1 - 1));
+            burstTime = stoi(line.substr(pos2 + 1));
+        }
+        else
+        {
+            // For space-separated values
+            istringstream iss(line); // Use istringstream to parse space-separated values
+            iss >> name >> priority >> burstTime;
+        }
+
+        tasks.push_back({name, priority, burstTime});
+    }
+
+    file.close();
+    return tasks;
+}
+
+//--------------------FCFS--------------------
+void fcfs(const vector<Task> &tasks)
+{
+    cout << "\n-------FCFS Scheduling------\n";
+    int currentTime = 0;
+    cout << "\nTask Name\tBurst Time\tWaiting Time\n";
+
+    for (const auto &task : tasks)
+    {
+        cout << task.name << "\t\t" << task.burstTime << "\t\t" << currentTime << endl;
+        currentTime += task.burstTime;
+    }
+}
+
+//--------------------SJF--------------------
+void sjf(vector<Task> tasks)
+{
+    cout << "\n-------SJF Scheduling------\n";
+    sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
+         { return a.burstTime < b.burstTime; });
+
+    int currentTime = 0;
+    cout << "\nTask Name\tBurst Time\tWaiting Time\n";
+
+    for (const auto &task : tasks)
+    {
+        cout << task.name << "\t\t" << task.burstTime << "\t\t" << currentTime << endl;
+        currentTime += task.burstTime;
+    }
+}
+
+//--------------------Priority--------------------
+void priorityScheduling(vector<Task> tasks)
+{
+    cout << "\n-------Priority Scheduling------\n";
+    sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
+         { return a.priority > b.priority; });
+
+    int currentTime = 0;
+    cout << "\nTask Name\tBurst Time\tWaiting Time\n";
+
+    for (const auto &task : tasks)
+    {
+        cout << task.name << "\t\t" << task.burstTime << "\t\t" << currentTime << endl;
+        currentTime += task.burstTime;
+    }
+}
+
+//--------------------RR--------------------
+void roundRobin(const vector<Task> &tasks, int quantum)
+{
+    cout << "\n-------Round Robin Scheduling (Quantum = " << quantum << ")------\n";
+    queue<Task> taskQueue;
+    for (const auto &task : tasks)
+    {
+        taskQueue.push(task);
+    }
+
+    int currentTime = 0;
+    cout << "\nTask Name\tBurst Time\tCompletion Time\n";
+
+    while (!taskQueue.empty())
+    {
+        Task currentTask = taskQueue.front();
+        taskQueue.pop();
+
+        cout << currentTask.name << "\t\t" << currentTask.burstTime << "\t\t" << currentTime;
+        if (currentTask.burstTime <= quantum)
+        {
+            currentTime += currentTask.burstTime;
+            cout << endl;
+        }
+        else
+        {
+            currentTime += quantum;
+            currentTask.burstTime -= quantum;
+            cout << " (Remaining: " << currentTask.burstTime << ")\n";
+            taskQueue.push(currentTask);
+        }
+    }
+}
+
+//------------------- Priority with Round Robin Scheduling---------------------------
+void priorityWithRoundRobin(vector<Task> tasks, int quantum)
+{
+    cout << "\n-------Priority with Round Robin Scheduling (Quantum = " << quantum << ")------\n";
+    sort(tasks.begin(), tasks.end(), [](const Task &a, const Task &b)
+         { return a.priority > b.priority; });
+
+    queue<Task> taskQueue;
+    for (const auto &task : tasks)
+    {
+        taskQueue.push(task);
+    }
+
+    int currentTime = 0;
+    cout << "\nTask Name\tBurst Time\tCompletion Time\n";
+
+    while (!taskQueue.empty())
+    {
+        Task currentTask = taskQueue.front();
+        taskQueue.pop();
+
+        cout << currentTask.name << "\t\t" << currentTask.burstTime << "\t\t" << currentTime;
+        if (currentTask.burstTime <= quantum)
+        {
+            currentTime += currentTask.burstTime;
+            cout << endl;
+        }
+        else
+        {
+            currentTime += quantum;
+            currentTask.burstTime -= quantum;
+            cout << " (Remaining: " << currentTask.burstTime << ")\n";
+            taskQueue.push(currentTask);
+        }
+    }
+}
+
+//--------------------Main--------------------
+int main()
+{
+    const string filename = "schedule.txt";
+    vector<Task> tasks = readTasks(filename);
+
+    if (tasks.empty())
+    {
+        cerr << "No tasks were read. Please check the file format or path." << endl;
+        return 1;
+    }
+
+    cout << "Tasks successfully read from file:\n";
+    cout << "\n-------Initial Task Details------\n";
+    cout << "\nTask Name\tPriority\tBurst Time\n";
+    for (const auto &task : tasks)
+    {
+        cout << task.name << "\t\t" << task.priority << "\t\t" << task.burstTime << endl;
+    }
+
+    fcfs(tasks);
+    sjf(tasks);
+    priorityScheduling(tasks);
+    roundRobin(tasks, 4);             // Quantum = 4
+    priorityWithRoundRobin(tasks, 4); // Quantum = 4
+
+    return 0;
+}
+
+\end{lstlisting}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{1.png}
+    \label{fig:enter-label}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{2.png}
+    \label{fig:enter-label}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{3.png}
+    \label{fig:enter-label}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{4.png}
+    \label{fig:enter-label}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{5.png}
+
+    \label{fig:enter-label}
+\end{figure}
+\newpage
+\section*{Task 2 }
+\subsection*{Part 1: Local System Socket Programming}
+\subsection*{Server Code}
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <vector>
+#include <thread>
+#include <cstring>
+#include <algorithm>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+using namespace std;
+
+#define PORT 8094
+#define BUFFER_SIZE 1024
+
+vector<int> client_sockets;  // List of connected client sockets
+
+// Broadcast a message to all connected clients
+void broadcast_message(const string &message) {
+    for (int sock : client_sockets) {
+        int result = send(sock, message.c_str(), message.size(), 0);
+        if (result == -1) {
+            cerr << "Failed to send message to client socket: " << sock << "\n";
+        } else {
+            cout << "Message sent to client socket: " << sock << "\n";
+        }
+    }
+}
+
+// Handle messages from a specific client
+void handle_client(int client_socket) {
+    char buffer[BUFFER_SIZE];
+    while (true) {
+        memset(buffer, 0, BUFFER_SIZE);
+        int bytes_read = recv(client_socket, buffer, BUFFER_SIZE, 0);
+        if (bytes_read <= 0) {
+            cerr << "Client disconnected.\n";
+            close(client_socket);
+            client_sockets.erase(
+                remove(client_sockets.begin(), client_sockets.end(), client_socket),
+                client_sockets.end()
+            );
+            break;
+        }
+
+        cout << "Received from client: " << buffer << "\n";
+        broadcast_message(buffer);
+    }
+}
+
+int main() {
+    int server_socket, client_socket;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t addr_len = sizeof(client_addr);
+
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket == -1) {
+        cerr << "Failed to create socket.\n";
+        return 1;
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(PORT);
+
+    if (bind(server_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        cerr << "Bind failed.\n";
+        return 1;
+    }
+
+    if (listen(server_socket, 5) < 0) {
+        cerr << "Listen failed.\n";
+        return 1;
+    }
+
+    cout << "Server is listening on port " << PORT << "...\n";
+
+    // Thread for accepting new clients
+    thread([&]() {
+        while (true) {
+            client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &addr_len);
+            if (client_socket < 0) {
+                cerr << "Accept failed.\n";
+                continue;
+            }
+            cout << "New client connected.\n";
+            client_sockets.push_back(client_socket);
+
+            // Handle each client in a separate thread
+            thread(handle_client, client_socket).detach();
+        }
+    }).detach();
+
+    // Main thread for sending messages from the server
+    string server_message;
+    while (true) {
+        getline(cin, server_message);
+        if (server_message == "exit") {
+            break;
+        }
+        broadcast_message("Server: " + server_message);
+    }
+
+    close(server_socket);
+    return 0;
+}
+
+
+\end{lstlisting}
+
+\subsection*{Client Code}
+\begin{lstlisting}[language=C++]
+#include <iostream>
+#include <thread>
+#include <cstring>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+using namespace std;
+
+#define PORT 8094
+#define BUFFER_SIZE 1024
+
+void receive_messages(int socket) {
+    char buffer[BUFFER_SIZE];
+    while (true) {
+        memset(buffer, 0, BUFFER_SIZE);
+        int bytes_read = recv(socket, buffer, BUFFER_SIZE, 0);
+        if (bytes_read <= 0) {
+        cerr << "Disconnected from server or error receiving message.\n";
+            break;
+        }
+        cout << "Broadcast message received: " << buffer << "\n";
+    }
+}
+
+int main() {
+    int client_socket;
+    struct sockaddr_in server_addr;
+
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_socket == -1) {
+        cerr << "Failed to create socket.\n";
+        return 1;
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    if (connect(client_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
+        cerr << "Connection failed.\n";
+        return 1;
+    }
+
+    cout << "Connected to server.\n";
+
+    // Start a thread to receive messages
+    thread(receive_messages, client_socket).detach();
+
+    // Main loop for sending messages
+    while (true) {
+        string message;
+        getline(cin, message);
+        if (message == "exit") {
+            break;
+        }
+        send(client_socket, message.c_str(), message.size(), 0);
+    }
+
+    close(client_socket);
+    return 0;
+}
+
+\end{lstlisting}
+\newpage
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{6.png}
+    \label{fig:enter-label}
+\end{figure}
+
+
+\section*{Part 2: Distributed System Socket Programming}
+
+\subsection{Server Code}
+\begin{lstlisting}
+#include <iostream>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+using namespace std;
+
+#define PORT 8084
+
+int main()
+{
+    int server_fd, client_sock;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    char buffer[1024] = {0};
+
+    // Create socket
+    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    {
+        perror("Socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(PORT);
+
+    // Bind the socket to the port
+    if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        perror("Bind failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Listen for incoming connections
+    if (listen(server_fd, 3) < 0)
+    {
+        perror("Listen failed");
+        exit(EXIT_FAILURE);
+    }
+    cout << "Waiting for connections...\n";
+
+    // Accept a connection from the client
+    if ((client_sock = accept(server_fd, (struct sockaddr *)&client_addr, &client_len)) < 0)
+    {
+        perror("Accept failed");
+        exit(EXIT_FAILURE);
+    }
+
+    cout << "Client connected\n";
+
+    // Read and send messages
+    while (true)
+    {
+        int read_size = read(client_sock, buffer, 1024);
+        if (read_size == 0)
+        {
+            cout << "Client disconnected\n";
+            break;
+        }
+        buffer[read_size] = '\0';
+        cout << "Client: " << buffer << "\n";
+
+        cout << "Server: ";
+        string response;
+        getline(cin, response);
+        send(client_sock, response.c_str(), response.length(), 0);
+    }
+
+    close(client_sock);
+    close(server_fd);           
+    return 0;
+}
+
+
+
+\end{lstlisting}
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{distributed.png}
+    \caption{distributed server}
+    
+\end{figure}
+\newpage
+\subsection{Client Code}
+\begin{lstlisting}
+#include <iostream>
+#include <unistd.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+using namespace std;
+
+#define SERVER_IP "127.0.0.1" // Replace with server laptop's IP address
+#define PORT 8080
+
+int main()
+{
+    int sock;
+    struct sockaddr_in server_addr;
+    char buffer[1024] = {0};
+
+    // Create socket
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+
+    // Convert IP address to binary format
+    if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0)
+    {
+        perror("Invalid address or Address not supported");
+        exit(EXIT_FAILURE);
+    }
+
+    // Connect to the server
+    if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    {
+        perror("Connection failed");
+        exit(EXIT_FAILURE);
+    }
+
+    cout << "Connected to server\n";
+
+    // Send and receive messages
+    while (true)
+    {
+        cout << "Client: ";
+        string message;
+        getline(cin, message);
+        send(sock, message.c_str(), message.length(), 0);
+
+        int read_size = read(sock, buffer, 1024);
+        buffer[read_size] = '\0';
+        cout << "Server: " << buffer << "\n";
+    }
+
+    close(sock);
+    return 0;
+}
+
+
+\end{lstlisting}
+
+\newpage
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{another.png}
+    \caption{distributed client}
+   
+\end{figure}
+\end{document}
